@@ -1,0 +1,12 @@
+{
+  "lastChangelogVersion": "0.80.3",
+  "theme": "dark",
+  "defaultProvider": "opencode-go",
+  "defaultModel": "deepseek-v4-pro",
+  "defaultThinkingLevel": "high",
+  "hideThinkingBlock": false,
+  "packages": [
+    "git:github.com/DietrichGebert/ponytail",
+    "npm:@firstpick/pi-extension-grill-me"
+  ]
+}
