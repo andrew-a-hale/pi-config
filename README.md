@@ -33,4 +33,6 @@ After pulling changes to this repo, re-run:
 | Binding | Action |
 |---------|--------|
 | `Shift+Tab` | Cycle work mode (plan → review → build) |
+| `Alt+C` | Cycle caveman mode (off → lite → full → ultra) |
+| `Alt+L` | Cycle ponytail mode (off → lite → full → ultra) |
 | `Alt+T` | Cycle thinking level |
