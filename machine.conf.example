@@ -1,0 +1,7 @@
+# Machine-specific model configuration.
+# Copy this to machine.conf and edit for your machine.
+# machine.conf is gitignored — never committed.
+
+# Format: provider/model-id  (e.g. "opencode-go/deepseek-v4-pro")
+PRO_MODEL="opencode-go/deepseek-v4-pro"
+FLASH_MODEL="opencode-go/deepseek-v4-flash"

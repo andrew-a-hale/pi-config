@@ -13,9 +13,6 @@
     ],
     "prompts": [
       "./prompts"
-    ],
-    "agents": [
-      "./skills/parallel-todos/agents"
     ]
   }
 }

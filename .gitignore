@@ -1,0 +1,5 @@
+# Per-machine model config — never commit
+machine.conf
+
+# Generated agent files from templates
+skills/parallel-todos/agents-generated/
