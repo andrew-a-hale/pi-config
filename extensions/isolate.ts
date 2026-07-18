@@ -7,10 +7,13 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("isolate", {
     description: "Run a coding task in an isolated Docker container",
     async handler(args, ctx) {
-      if (!args.trim()) {
+      // Split into repo (first token) and prompt (everything else)
+      const match = args.trim().match(/^(\S+)\s+(.*)$/);
+      if (!match) {
         ctx.ui.notify("Usage: /isolate <repo-url-or-path> <prompt>", "warning");
         return;
       }
+      const [, repo, prompt] = match;
 
       const hostname = (await pi.exec("hostname", [])).stdout.trim();
       const onTom = hostname === "tom" || hostname === "raspberrypi";
@@ -19,8 +22,8 @@ export default function (pi: ExtensionAPI) {
 
       const cmd = onTom ? "isolate" : "ssh";
       const cmdArgs = onTom
-        ? args.split(/\s+/)
-        : ["tom", "isolate", ...args.split(/\s+/)];
+        ? [repo, prompt]
+        : ["tom", "isolate", repo, prompt];
       const result = await pi.exec(cmd, cmdArgs);
 
       if (result.code === 0) {
@@ -29,8 +32,9 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.notify(`Isolate failed (exit ${result.code}).`, "error");
       }
 
-      const message = result.stdout
-        ? `isolate completed (exit ${result.code}):\n\`\`\`\n${result.stdout}\n\`\`\``
+      const output = [result.stderr, result.stdout].filter(Boolean).join('\n').trim();
+      const message = output
+        ? `isolate completed (exit ${result.code}):\n\`\`\`\n${output}\n\`\`\``
         : `isolate completed (exit ${result.code})`;
 
       pi.sendMessage({
