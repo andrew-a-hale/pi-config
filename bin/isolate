@@ -16,6 +16,13 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
+# Source machine config for model (defaults if missing)
+MACHINE_CONF="$DOCKER_DIR/machine.conf"
+PRO_MODEL="opencode-go/deepseek-v4-pro"  # fallback
+if [ -f "$MACHINE_CONF" ]; then
+  source "$MACHINE_CONF"
+fi
+
 if [ -z "$PROMPT" ]; then
   echo "Usage: isolate <repo-url-or-path> <prompt>" >&2
   exit 1
@@ -55,6 +62,7 @@ docker run --rm \
   -v "$WORKDIR:/workspace" \
   -v pi-agent-home:/root/.pi/agent \
   pi-sandbox \
+  --model "$PRO_MODEL" \
   -p "$FULL_PROMPT"
 
 # Push if this was a clone and there are changes

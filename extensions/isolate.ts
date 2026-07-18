@@ -1,35 +1,43 @@
 // /isolate — run a coding task in an isolated Docker container via the host's `isolate` script.
 // Usage: /isolate <repo-url-or-path> <prompt>
 
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-export default function (ctx: ExtensionContext) {
-  ctx.registerCommand({
-    name: "isolate",
+export default function (pi: ExtensionAPI) {
+  pi.registerCommand("isolate", {
     description: "Run a coding task in an isolated Docker container",
-    async handler(ctx, args) {
+    async handler(args, ctx) {
       if (!args.trim()) {
         ctx.ui.notify("Usage: /isolate <repo-url-or-path> <prompt>", "warning");
         return;
       }
 
-      // Notify and run
-      ctx.ui.notify(`Running isolate...`);
+      const hostname = (await pi.exec("hostname", [])).stdout.trim();
+      const onTom = hostname === "tom" || hostname === "raspberrypi";
 
-      const result = await ctx.runBash(`isolate ${args}`);
+      ctx.ui.notify(`Running isolate${onTom ? "" : " on tom"}...`);
 
-      if (result.exitCode === 0) {
+      const cmd = onTom ? "isolate" : "ssh";
+      const cmdArgs = onTom
+        ? args.split(/\s+/)
+        : ["tom", "isolate", ...args.split(/\s+/)];
+      const result = await pi.exec(cmd, cmdArgs);
+
+      if (result.code === 0) {
         ctx.ui.notify("Isolate completed successfully.", "info");
       } else {
-        ctx.ui.notify(`Isolate failed (exit ${result.exitCode}).`, "error");
+        ctx.ui.notify(`Isolate failed (exit ${result.code}).`, "error");
       }
 
-      // Feed results back into conversation so the agent can discuss them
-      const message = result.output
-        ? `isolate completed (exit ${result.exitCode}):\n\`\`\`\n${result.output}\n\`\`\``
-        : `isolate completed (exit ${result.exitCode})`;
+      const message = result.stdout
+        ? `isolate completed (exit ${result.code}):\n\`\`\`\n${result.stdout}\n\`\`\``
+        : `isolate completed (exit ${result.code})`;
 
-      ctx.sendMessage(message);
+      pi.sendMessage({
+        customType: "isolate",
+        content: message,
+        display: true,
+      });
     },
   });
 }

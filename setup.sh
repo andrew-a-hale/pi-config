@@ -67,6 +67,8 @@ if $INSTALL_DOCKER; then
 		chmod 600 "$HOME/.pi/docker/.pi-env"
 		echo "    Created ~/.pi/docker/.pi-env — edit with your API keys"
 	fi
+	cp "$DIR/machine.conf" "$HOME/.pi/docker/machine.conf"
+	echo "    Copied machine.conf to ~/.pi/docker/machine.conf"
 
 	# Build pi container image
 	echo "    Building pi-sandbox image..."
