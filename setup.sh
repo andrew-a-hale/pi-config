@@ -1,12 +1,12 @@
 #!/bin/sh
 # Clone this repo, then run this script to install everything.
-# --docker  also install Docker, build the pi container, and install bin/isolate
+# --gondolin  also install Gondolin micro-VM sandbox (requires QEMU)
 set -e
 
-INSTALL_DOCKER=false
+INSTALL_GONDOLIN=false
 for arg in "$@"; do
 	case "$arg" in
-		--docker) INSTALL_DOCKER=true ;;
+		--gondolin) INSTALL_GONDOLIN=true ;;
 	esac
 done
 
@@ -45,40 +45,27 @@ for dir in prompts extensions skills; do
 	ln -sfn "$DIR/$dir" "$HOME/.pi/agent/$dir"
 done
 
-# --- Docker / isolate setup (opt-in) ---
-if $INSTALL_DOCKER; then
+# --- Gondolin setup (opt-in) ---
+if $INSTALL_GONDOLIN; then
 	echo ""
-	echo "==> Docker setup..."
+	echo "==> Gondolin setup..."
 
-	# Install Docker if missing
-	if ! command -v docker >/dev/null 2>&1; then
-		echo "    Installing Docker..."
-		curl -fsSL https://get.docker.com | sudo sh
-		sudo usermod -aG docker "$USER"
-		echo "    Docker installed. You may need to log out/in or run: newgrp docker"
+	# Check QEMU
+	if ! command -v qemu-system-x86_64 >/dev/null 2>&1; then
+		echo "    WARNING: qemu-system-x86_64 not found. Install it:"
+		echo "      Debian/Ubuntu: sudo apt install qemu-system-x86"
+		echo "      macOS:         brew install qemu"
+	else
+		echo "    QEMU found."
 	fi
 
-	# Copy docker files to ~/.pi/docker/
-	echo "    Copying docker files to ~/.pi/docker/..."
-	mkdir -p "$HOME/.pi/docker"
-	cp "$DIR/docker/Dockerfile.pi" "$HOME/.pi/docker/Dockerfile.pi"
-	if [ ! -f "$HOME/.pi/docker/.pi-env" ]; then
-		cp "$DIR/docker/.pi-env.example" "$HOME/.pi/docker/.pi-env"
-		chmod 600 "$HOME/.pi/docker/.pi-env"
-		echo "    Created ~/.pi/docker/.pi-env — edit with your API keys"
+	# Install npm deps for gondolin extension
+	if [ -f "$DIR/extensions/gondolin/package.json" ]; then
+		echo "    Installing gondolin npm dependencies..."
+		cd "$DIR/extensions/gondolin" && npm install --ignore-scripts
+		echo "    Done."
+	else
+		echo "    ERROR: extensions/gondolin/package.json not found."
 	fi
-	cp "$DIR/machine.conf" "$HOME/.pi/docker/machine.conf"
-	echo "    Copied machine.conf to ~/.pi/docker/machine.conf"
-
-	# Build pi container image
-	echo "    Building pi-sandbox image..."
-	docker build --pull -t pi-sandbox -f "$HOME/.pi/docker/Dockerfile.pi" "$HOME/.pi/docker"
-
-	# Install isolate script
-	echo "    Installing isolate to /usr/local/bin..."
-	sudo cp "$DIR/bin/isolate" /usr/local/bin/isolate
-	sudo chmod +x /usr/local/bin/isolate
-
-	echo "    Done. Test with: isolate ~/projects/some-project 'say hello world'"
 fi
 
