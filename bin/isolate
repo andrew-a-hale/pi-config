@@ -8,7 +8,7 @@ set -euo pipefail
 
 REPO="$1"
 PROMPT="${2:-}"
-DOCKER_DIR="${PI_CONFIG_DOCKER_DIR:-$HOME/.pi-config/docker}"
+DOCKER_DIR="${PI_CONFIG_DOCKER_DIR:-$HOME/.pi/docker}"
 ENV_FILE="$DOCKER_DIR/.pi-env"
 
 if [ ! -f "$ENV_FILE" ]; then

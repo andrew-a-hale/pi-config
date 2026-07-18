@@ -1,8 +1,5 @@
 # Per-machine model config — never commit
 machine.conf
 
-# Secrets — never commit
-docker/.pi-env
-
 # Generated agent files from templates
 skills/parallel-todos/agents-generated/

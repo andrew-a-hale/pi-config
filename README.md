@@ -66,7 +66,7 @@ What happens:
 3. Changes committed and pushed (for remote repos)
 4. Temp dir cleaned up
 
-Secrets live in `docker/.pi-env` (gitignored, `chmod 600`). The named Docker volume `pi-agent-home` persists pi sessions and OAuth tokens across runs.
+Secrets live in `~/.pi/docker/.pi-env` (copied from the template, `chmod 600`. The named Docker volume `pi-agent-home` persists pi sessions and OAuth tokens across runs.
 
 ### Auth bootstrap (one-time)
 

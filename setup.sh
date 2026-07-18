@@ -34,6 +34,7 @@ done
 mkdir -p "$HOME/.pi/agent"
 ln -sf "$DIR/keybindings.json" "$HOME/.pi/agent/keybindings.json"
 ln -sf "$DIR/settings.json" "$HOME/.pi/agent/settings.json"
+ln -sf "$DIR/system.md" "$HOME/.pi/agent/APPEND_SYSTEM.md"
 
 # Symlink directories
 rm -rf "$HOME/.pi/agent/agents"
@@ -57,23 +58,24 @@ if $INSTALL_DOCKER; then
 		echo "    Docker installed. You may need to log out/in or run: newgrp docker"
 	fi
 
+	# Copy docker files to ~/.pi/docker/
+	echo "    Copying docker files to ~/.pi/docker/..."
+	mkdir -p "$HOME/.pi/docker"
+	cp "$DIR/docker/Dockerfile.pi" "$HOME/.pi/docker/Dockerfile.pi"
+	if [ ! -f "$HOME/.pi/docker/.pi-env" ]; then
+		cp "$DIR/docker/.pi-env.example" "$HOME/.pi/docker/.pi-env"
+		chmod 600 "$HOME/.pi/docker/.pi-env"
+		echo "    Created ~/.pi/docker/.pi-env — edit with your API keys"
+	fi
+
 	# Build pi container image
 	echo "    Building pi-sandbox image..."
-	docker build --pull -t pi-sandbox -f "$DIR/docker/Dockerfile.pi" "$DIR/docker"
+	docker build --pull -t pi-sandbox -f "$HOME/.pi/docker/Dockerfile.pi" "$HOME/.pi/docker"
 
 	# Install isolate script
 	echo "    Installing isolate to /usr/local/bin..."
 	sudo cp "$DIR/bin/isolate" /usr/local/bin/isolate
 	sudo chmod +x /usr/local/bin/isolate
-
-	# Prompt for secrets if missing
-	if [ ! -f "$DIR/docker/.pi-env" ]; then
-		echo ""
-		echo "    ==> No .pi-env found. Create one now:"
-		echo "        cp $DIR/docker/.pi-env.example $DIR/docker/.pi-env"
-		echo "        chmod 600 $DIR/docker/.pi-env"
-		echo "        # Edit with your API keys"
-	fi
 
 	echo "    Done. Test with: isolate ~/projects/some-project 'say hello world'"
 fi
