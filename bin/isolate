@@ -1,0 +1,73 @@
+#!/bin/bash
+# Spin up a pi container, do work in isolation, report back.
+# Usage: isolate <repo-url-or-local-path> <prompt>
+# Examples:
+#   isolate https://github.com/you/proj "fix issue #42, run tests, show git diff"
+#   isolate ~/projects/foo "refactor auth.ts and test"
+set -euo pipefail
+
+REPO="$1"
+PROMPT="${2:-}"
+DOCKER_DIR="${PI_CONFIG_DOCKER_DIR:-$HOME/.pi-config/docker}"
+ENV_FILE="$DOCKER_DIR/.pi-env"
+
+if [ ! -f "$ENV_FILE" ]; then
+  echo "ERROR: $ENV_FILE not found. Create it from .pi-env.example" >&2
+  exit 1
+fi
+
+if [ -z "$PROMPT" ]; then
+  echo "Usage: isolate <repo-url-or-path> <prompt>" >&2
+  exit 1
+fi
+
+# Resolve repo: URL or local path
+if [[ "$REPO" =~ ^https?://|^git@ ]]; then
+  NAME=$(basename "$REPO" .git)
+  WORKDIR="/tmp/isolate-$NAME-$(date +%s)"
+  cleanup() { rm -rf "$WORKDIR"; }
+  trap cleanup EXIT
+  mkdir -p "$WORKDIR"
+
+  # Use GITHUB_TOKEN for private repos if set
+  if grep -q '^GITHUB_TOKEN=' "$ENV_FILE"; then
+    source <(grep '^GITHUB_TOKEN=' "$ENV_FILE")
+    CLONE_URL=$(echo "$REPO" | sed "s|https://|https://x-access-token:${GITHUB_TOKEN}@|")
+  else
+    CLONE_URL="$REPO"
+  fi
+  echo "==> Cloning $REPO..."
+  git clone "$CLONE_URL" "$WORKDIR" 2>&1
+else
+  WORKDIR="$REPO"
+  if [ ! -d "$WORKDIR" ]; then
+    echo "ERROR: $WORKDIR is not a directory" >&2
+    exit 1
+  fi
+  echo "==> Using local project: $WORKDIR"
+fi
+
+FULL_PROMPT="$PROMPT. After fixing: run tests, show git diff --stat, and summarize changes."
+
+echo "==> Running pi in container..."
+docker run --rm \
+  --env-file "$ENV_FILE" \
+  -v "$WORKDIR:/workspace" \
+  -v pi-agent-home:/root/.pi/agent \
+  pi-sandbox \
+  -p "$FULL_PROMPT"
+
+# Push if this was a clone and there are changes
+if [[ "$REPO" =~ ^https?://|^git@ ]]; then
+  cd "$WORKDIR"
+  if git diff --quiet && git diff --cached --quiet; then
+    echo "==> No changes to push."
+  else
+    echo "==> Changes detected. Committing and pushing..."
+    git add -A
+    git diff --cached --stat
+    git commit -m "fix: $PROMPT" 2>&1
+    git push origin HEAD 2>&1
+    echo "==> Pushed."
+  fi
+fi
