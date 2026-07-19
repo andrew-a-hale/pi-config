@@ -19,6 +19,7 @@
  *   - QEMU installed (for example, `brew install qemu` on macOS)
  */
 
+import os from "node:os";
 import path from "node:path";
 import { RealFSProvider, VM } from "@earendil-works/gondolin";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -383,6 +384,7 @@ export default function (pi: ExtensionAPI) {
 			vfs: {
 				mounts: {
 					[GUEST_WORKSPACE]: new RealFSProvider(localCwd),
+					[path.join(os.homedir(), '.pi', 'agent', 'skills')]: new RealFSProvider(path.join(os.homedir(), '.pi', 'agent', 'skills')),
 				},
 			},
 		});
