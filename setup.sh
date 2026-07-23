@@ -30,6 +30,18 @@ for template in "$DIR/skills/parallel-todos/agents"/*.md.in; do
 	sed "s|@PRO@|${PRO_MODEL}|g; s|@FLASH@|${FLASH_MODEL}|g" "$template" > "$AGENT_DIR/$name"
 done
 
+# Generate web-search.json for pi-web-access
+if [ -n "$BRAVE_API_KEY" ]; then
+	cat > "$HOME/.pi/web-search.json" <<JSONEOF
+{
+  "braveApiKey": "$BRAVE_API_KEY"
+}
+JSONEOF
+	echo "==> Wrote ~/.pi/web-search.json"
+else
+	echo "==> BRAVE_API_KEY not set in machine.conf — skipping web-search.json"
+fi
+
 # Symlink config files
 mkdir -p "$HOME/.pi/agent"
 ln -sf "$DIR/keybindings.json" "$HOME/.pi/agent/keybindings.json"

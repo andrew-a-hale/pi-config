@@ -5,3 +5,6 @@
 # Format: provider/model-id  (e.g. "opencode-go/deepseek-v4-pro")
 PRO_MODEL="opencode-go/deepseek-v4-pro"
 FLASH_MODEL="opencode-go/deepseek-v4-flash"
+
+# Brave Search API key for pi-web-access (get one at https://brave.com/search/api/)
+BRAVE_API_KEY=""

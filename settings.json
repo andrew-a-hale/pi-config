@@ -1,11 +1,12 @@
 {
-  "lastChangelogVersion": "0.80.10",
+  "lastChangelogVersion": "0.81.1",
   "theme": "dark",
   "defaultProvider": "opencode-go",
   "defaultModel": "deepseek-v4-pro",
   "defaultThinkingLevel": "high",
   "packages": [
     "git:github.com/DietrichGebert/ponytail",
-    "npm:@firstpick/pi-extension-grill-me"
+    "npm:@firstpick/pi-extension-grill-me",
+    "npm:pi-web-access"
   ]
 }
