@@ -4,10 +4,10 @@ My pi coding agent configuration. Agent definitions, skills, extensions, prompts
 
 ## What's here
 
-- **extensions/** — pi extensions (mermaid, todo, subagent, omarchy-system-theme)
-- **skills/** — pi skills (omarchy, parallel-todos, ponytail, memory)
-  - `parallel-todos/agents/` — subagent definitions (planner, reviewer, scout, worker-flash, worker-pro)
-- **prompts/** — pi prompt templates (implement, review, scout-and-plan, remember)
+- **extensions/** — pi extensions (mermaid, todo, subagent, omarchy-system-theme, btw, gondolin)
+- **skills/** — pi skills (omarchy, parallel-todos, memory)
+  - `parallel-todos/agents/` — subagent templates (planner, reviewer, scout, worker-flash, worker-pro) → generated into `agents-generated/` by `setup.sh`
+- **prompts/** — pi prompt templates (implement, implement-and-review, scout-and-plan, remember)
 - **keybindings.json** — custom keybindings (installed to `~/.pi/agent/`)
 - **[AGENTS.md](AGENTS.md)** — agent configuration reference and sync guide
 
@@ -48,5 +48,4 @@ No port forwarding, no DNS, no dynamic IP wrangling.
 
 | Binding | Action |
 |---------|--------|
-| `Alt+L` | Cycle ponytail mode (lite → full → ultra) |
 | `Alt+T` | Cycle thinking level |

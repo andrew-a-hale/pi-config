@@ -12,7 +12,7 @@ Pi subagent definitions — the source of truth shared across machines.
 | `worker-flash` | deepseek-v4-flash | read, write, edit, bash, grep, find, ls | Simple edits, dead code, one-liners, mechanical changes |
 | `worker-pro` | deepseek-v4-pro | read, write, edit, bash, grep, find, ls | Complex multi-file changes, security-critical, judgment |
 
-Agent definitions live in `skills/parallel-todos/agents/` as individual `.md` files with YAML frontmatter. The `package.json` `agents` key points pi there, and `setup.sh` symlinks `~/.pi/agent/agents` → that directory.
+Agent definitions live in `skills/parallel-todos/agents/` as `.md.in` templates with YAML frontmatter. `setup.sh` substitutes `@PRO@`/`@FLASH@` model placeholders from `machine.conf` and generates the `.md` files into `skills/parallel-todos/agents-generated/`, then symlinks `~/.pi/agent/agents` → that directory. (There is no `package.json` `agents` key — wiring is purely via this symlink.)
 
 ## Installation
 
@@ -54,28 +54,30 @@ On the target machine, pull and re-run `./setup.sh`.
 Copy them into the project, then run setup:
 
 ```sh
-cp ~/.pi/agent/agents/my-agent.md pi-config/skills/parallel-todos/agents/
+cp ~/.pi/agent/agents/my-agent.md pi-config/skills/parallel-todos/agents/my-agent.md.in   # rename + add @PRO@/@FLASH@ as needed
 cd pi-config
-./setup.sh   # re-creates symlink
+./setup.sh   # regenerates agents-generated/ and re-points the symlink
 ```
 
 ## Adding a new agent
 
-1. Create `skills/parallel-todos/agents/<name>.md`:
+1. Create `skills/parallel-todos/agents/<name>.md.in` (a `.md.in` template with `@PRO@`/`@FLASH@` model placeholders):
 
 ```markdown
 ---
 name: my-agent
 description: What it does
 tools: read, grep, find, ls, bash
-model: provider/model-id
+model: @PRO@
 ---
 
 System prompt body. No YAML — this is the raw system prompt.
 ```
 
-2. Commit. `setup.sh` picks it up automatically — no config changes needed.
+Use `@PRO@` or `@FLASH@` in `model:` — `setup.sh` substitutes them from `machine.conf`.
+
+2. Commit. Re-run `./setup.sh` — it regenerates `agents-generated/<name>.md` from the template and re-points the symlink. No `package.json` change needed.
 
 ## Model names
 
-The `model:` field in each agent `.md` uses your configured provider/model IDs. If your provider names differ (e.g. OpenRouter), adjust the `model:` field in each agent file.
+Agent `.md.in` templates use `@PRO@`/`@FLASH@` placeholders that `setup.sh` substitutes from `machine.conf` (`PRO_MODEL`, `FLASH_MODEL`). To change which model a role uses, edit `machine.conf` and re-run `setup.sh` — no template edits needed. To pin a single agent to a specific provider/model ID that ignores the placeholders, write the literal `model:` value directly in its `.md.in`.

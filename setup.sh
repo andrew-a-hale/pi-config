@@ -1,14 +1,6 @@
 #!/bin/sh
 # Clone this repo, then run this script to install everything.
-# --gondolin  also install Gondolin micro-VM sandbox (requires QEMU)
 set -e
-
-INSTALL_GONDOLIN=false
-for arg in "$@"; do
-	case "$arg" in
-		--gondolin) INSTALL_GONDOLIN=true ;;
-	esac
-done
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -57,27 +49,53 @@ for dir in prompts extensions skills; do
 	ln -sfn "$DIR/$dir" "$HOME/.pi/agent/$dir"
 done
 
-# --- Gondolin setup (opt-in) ---
-if $INSTALL_GONDOLIN; then
-	echo ""
-	echo "==> Gondolin setup..."
+# --- Gondolin setup ---
+echo ""
+echo "==> Gondolin setup..."
 
-	# Check QEMU
-	if ! command -v qemu-system-x86_64 >/dev/null 2>&1; then
-		echo "    WARNING: qemu-system-x86_64 not found. Install it:"
-		echo "      Debian/Ubuntu: sudo apt install qemu-system-x86"
-		echo "      macOS:         brew install qemu"
-	else
-		echo "    QEMU found."
-	fi
-
-	# Install npm deps for gondolin extension
-	if [ -f "$DIR/extensions/gondolin/package.json" ]; then
-		echo "    Installing gondolin npm dependencies..."
-		cd "$DIR/extensions/gondolin" && npm install --ignore-scripts
-		echo "    Done."
-	else
-		echo "    ERROR: extensions/gondolin/package.json not found."
-	fi
+# Check QEMU
+if ! command -v qemu-system-x86_64 >/dev/null 2>&1; then
+	echo "    WARNING: qemu-system-x86_64 not found. Install it:"
+	echo "      Debian/Ubuntu: sudo apt install qemu-system-x86"
+	echo "      macOS:         brew install qemu"
+else
+	echo "    QEMU found."
 fi
+
+# Install npm deps for gondolin extension
+if [ -f "$DIR/extensions/gondolin/package.json" ]; then
+	echo "    Installing gondolin npm dependencies..."
+	cd "$DIR/extensions/gondolin" && npm install --ignore-scripts
+	echo "    Done."
+else
+	echo "    ERROR: extensions/gondolin/package.json not found."
+fi
+
+# --- pig alias: pi without gondolin ---
+# Enumerate all extensions except gondolin, plus known package extensions.
+_pig_ext=""
+for ext in "$DIR/extensions"/*; do
+	name="$(basename "$ext")"
+	[ "$name" = "gondolin" ] && continue
+	_pig_ext="$_pig_ext -e \$HOME/.pi/agent/extensions/$name"
+done
+# Package extensions (paths stable after pi installs them)
+_pig_ext="$_pig_ext -e \$HOME/.pi/agent/git/github.com/DietrichGebert/ponytail/pi-extension/index.js"
+_pig_ext="$_pig_ext -e \$HOME/.pi/agent/npm/node_modules/@firstpick/pi-extension-grill-me/index.ts"
+_pig_ext="$_pig_ext -e \$HOME/.pi/agent/npm/node_modules/pi-web-access/index.ts"
+
+PIG_ALIAS="alias pig='pi --no-extensions$_pig_ext'"
+case "$SHELL" in
+	*zsh) rc="$HOME/.zshrc" ;;
+	*)   rc="$HOME/.bashrc" ;;
+esac
+[ -f "$rc" ] || rc="$HOME/.bashrc"
+touch "$rc"
+if grep -q "alias pig=" "$rc" 2>/dev/null; then
+	echo "==> 'pig' alias already in $rc"
+else
+	printf '\n# added by pi-config setup.sh\n%s\n' "$PIG_ALIAS" >>"$rc"
+	echo "==> Added 'pig' alias to $rc"
+fi
+echo "    Run: source $rc  (or open a new terminal) to use 'pig'"
 
