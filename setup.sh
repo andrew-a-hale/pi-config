@@ -1,101 +1,42 @@
 #!/bin/sh
-# Clone this repo, then run this script to install everything.
+# pi-config setup — install extensions, skills, and config.
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Load per-machine model config (gitignored; copy machine.conf.example if missing)
-if [ ! -f "$DIR/machine.conf" ]; then
-	echo "==> No machine.conf found, copying from machine.conf.example"
-	echo "    Edit $DIR/machine.conf if your models differ."
-	cp "$DIR/machine.conf.example" "$DIR/machine.conf"
-fi
-. "$DIR/machine.conf"
+echo "==> Installing extensions..."
 
-# Generate agent files from templates
-echo "==> Generating agent files..."
-AGENT_DIR="$DIR/skills/parallel-todos/agents-generated"
-rm -rf "$AGENT_DIR"
-mkdir -p "$AGENT_DIR"
-for template in "$DIR/skills/parallel-todos/agents"/*.md.in; do
-	name="$(basename "$template" .md.in).md"
-	sed "s|@PRO@|${PRO_MODEL}|g; s|@FLASH@|${FLASH_MODEL}|g" "$template" > "$AGENT_DIR/$name"
+# Install npm deps for package-style extensions
+for pkg_dir in "$DIR/extensions"/*/; do
+  if [ -f "$pkg_dir/package.json" ]; then
+    name="$(basename "$pkg_dir")"
+    echo "    Installing deps for $name..."
+    cd "$pkg_dir" && npm install --ignore-scripts
+  fi
 done
-
-# Generate web-search.json for pi-web-access
-if [ -n "$BRAVE_API_KEY" ]; then
-	cat > "$HOME/.pi/web-search.json" <<JSONEOF
-{
-  "braveApiKey": "$BRAVE_API_KEY"
-}
-JSONEOF
-	echo "==> Wrote ~/.pi/web-search.json"
-else
-	echo "==> BRAVE_API_KEY not set in machine.conf — skipping web-search.json"
-fi
 
 # Symlink config files
 mkdir -p "$HOME/.pi/agent"
 ln -sf "$DIR/keybindings.json" "$HOME/.pi/agent/keybindings.json"
 ln -sf "$DIR/settings.json" "$HOME/.pi/agent/settings.json"
 ln -sf "$DIR/system.md" "$HOME/.pi/agent/APPEND_SYSTEM.md"
+ln -sf "$DIR/cloak.json" "$HOME/.pi/agent/cloak.json"
 
-# Symlink directories
-rm -rf "$HOME/.pi/agent/agents"
-ln -sfn "$AGENT_DIR" "$HOME/.pi/agent/agents"
+# Symlink extensions and skills
+rm -rf "$HOME/.pi/agent/extensions"
+ln -sfn "$DIR/extensions" "$HOME/.pi/agent/extensions"
+rm -rf "$HOME/.pi/agent/skills"
+ln -sfn "$DIR/skills" "$HOME/.pi/agent/skills"
 
-for dir in prompts extensions skills; do
-	rm -rf "$HOME/.pi/agent/$dir"
-	ln -sfn "$DIR/$dir" "$HOME/.pi/agent/$dir"
-done
+echo "==> Installing pi packages..."
+pi install npm:pi-mcp-adapter 2>/dev/null || echo "    pi-mcp-adapter already installed"
+pi install npm:pi-extmgr 2>/dev/null || echo "    pi-extmgr already installed"
 
-# --- Gondolin setup ---
+echo "==> Installing MCP config..."
+if [ -f "$DIR/mcp.json" ]; then
+  cp "$DIR/mcp.json" "$HOME/.pi/agent/mcp.json"
+  echo "    mcp.json installed"
+fi
+
 echo ""
-echo "==> Gondolin setup..."
-
-# Check QEMU
-if ! command -v qemu-system-x86_64 >/dev/null 2>&1; then
-	echo "    WARNING: qemu-system-x86_64 not found. Install it:"
-	echo "      Debian/Ubuntu: sudo apt install qemu-system-x86"
-	echo "      macOS:         brew install qemu"
-else
-	echo "    QEMU found."
-fi
-
-# Install npm deps for gondolin extension
-if [ -f "$DIR/extensions/gondolin/package.json" ]; then
-	echo "    Installing gondolin npm dependencies..."
-	cd "$DIR/extensions/gondolin" && npm install --ignore-scripts
-	echo "    Done."
-else
-	echo "    ERROR: extensions/gondolin/package.json not found."
-fi
-
-# --- pig alias: pi without gondolin ---
-# Enumerate all extensions except gondolin, plus known package extensions.
-_pig_ext=""
-for ext in "$DIR/extensions"/*; do
-	name="$(basename "$ext")"
-	[ "$name" = "gondolin" ] && continue
-	_pig_ext="$_pig_ext -e \$HOME/.pi/agent/extensions/$name"
-done
-# Package extensions (paths stable after pi installs them)
-_pig_ext="$_pig_ext -e \$HOME/.pi/agent/git/github.com/DietrichGebert/ponytail/pi-extension/index.js"
-_pig_ext="$_pig_ext -e \$HOME/.pi/agent/npm/node_modules/@firstpick/pi-extension-grill-me/index.ts"
-_pig_ext="$_pig_ext -e \$HOME/.pi/agent/npm/node_modules/pi-web-access/index.ts"
-
-PIG_ALIAS="alias pig='pi --no-extensions$_pig_ext'"
-case "$SHELL" in
-	*zsh) rc="$HOME/.zshrc" ;;
-	*)   rc="$HOME/.bashrc" ;;
-esac
-[ -f "$rc" ] || rc="$HOME/.bashrc"
-touch "$rc"
-if grep -q "alias pig=" "$rc" 2>/dev/null; then
-	echo "==> 'pig' alias already in $rc"
-else
-	printf '\n# added by pi-config setup.sh\n%s\n' "$PIG_ALIAS" >>"$rc"
-	echo "==> Added 'pig' alias to $rc"
-fi
-echo "    Run: source $rc  (or open a new terminal) to use 'pig'"
-
+echo "==> Done. Run pi with /reload to pick up changes."

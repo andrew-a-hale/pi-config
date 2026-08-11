@@ -1,51 +1,75 @@
 # pi-config
 
-My pi coding agent configuration. Agent definitions, skills, extensions, prompts, and sandboxed vm.
+Pi coding agent configuration — extensions, skills, keybindings, and MCP setup.
 
-## What's here
+## Structure
 
-- **extensions/** — pi extensions (mermaid, todo, subagent, omarchy-system-theme, btw, gondolin)
-- **skills/** — pi skills (omarchy, parallel-todos, memory)
-  - `parallel-todos/agents/` — subagent templates (planner, reviewer, scout, worker-flash, worker-pro) → generated into `agents-generated/` by `setup.sh`
-- **prompts/** — pi prompt templates (implement, implement-and-review, scout-and-plan, remember)
-- **keybindings.json** — custom keybindings (installed to `~/.pi/agent/`)
-- **[AGENTS.md](AGENTS.md)** — agent configuration reference and sync guide
+```
+pi-config/
+├── settings.json          # Provider, model, packages
+├── keybindings.json       # Custom keybindings
+├── system.md              # APPEND_SYSTEM (MCP instructions)
+├── cloak.json             # Secret masking
+├── mcp.json               # MCP servers (duckdb)
+├── setup.sh               # Symlinks config → ~/.pi/agent/
+├── extensions/            # Pi extensions
+│   ├── continue-after-compaction.ts
+│   ├── git-interceptor.ts
+│   ├── herdr-agent-state.ts
+│   ├── whimsical.ts
+│   ├── pi-cloak/
+│   ├── pi-skill-toggle/
+│   └── save-md/
+└── skills/
+    ├── engineering/
+    ├── productivity/
+    └── productivity/
+```
 
-## Quickstart (new machine)
+## Quickstart
 
 ```sh
-git clone git@github.com:you/pi-config.git
+git clone git@github.com:andrew-hale/pi-config.git
 cd pi-config
-./setup.sh --gondolin
+./setup.sh
 ```
 
-`./setup.sh` alone installs pi config (symlinks, agents, keybindings).
+## MCP
 
-## Update
+pi-mcp-adapter provides a single `mcp()` proxy tool.
 
-After pulling changes:
-
-```sh
-./setup.sh           # pi config only
-```
-
-## VPN (access the host from anywhere)
-
-[Tailscale](https://tailscale.com) — free for personal use, works on iOS, Android, Linux, macOS, Windows.
-
-On the Raspberry Pi (tom):
-
-```sh
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-```
-
-Install the Tailscale app on iPhone and laptop. All devices get a stable `100.x.x.x` IP on the same mesh network. Then:
-
-No port forwarding, no DNS, no dynamic IP wrangling.
+- **duckdb** — DuckDB in-memory (via `uvx mcp-server-motherduck`)
 
 ## Keybindings
 
 | Binding | Action |
 |---------|--------|
 | `Alt+T` | Cycle thinking level |
+
+## Commands
+
+| Command | Extension |
+|---------|-----------|
+| `/save-md <name>` | Save assistant response as Markdown |
+| `/toggle-skills` | Toggle skills agent-invocable / manual-only |
+| `/cloak-status` | Secret masking status |
+| `/extensions` | Manage packages (pi-extmgr) |
+| `/extensions auto-update <when>` | Set package update schedule |
+
+## Herdr
+
+Herdr is a terminal multiplexer for coding agents.
+
+```sh
+brew install herdr
+brew services start herdr
+```
+
+The `herdr-agent-state.ts` extension is auto-managed by herdr.
+
+## Update
+
+```sh
+git pull
+./setup.sh
+```
