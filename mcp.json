@@ -10,6 +10,12 @@
       ],
       "transport": "stdio",
       "lifecycle": "lazy"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "brave-search-mcp"],
+      "transport": "stdio",
+      "lifecycle": "lazy"
     }
   },
   "imports": []

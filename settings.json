@@ -7,7 +7,8 @@
   "packages": [
     "npm:@dietrichgebert/ponytail",
     "npm:pi-mcp-adapter",
-    "npm:pi-extmgr"
+    "npm:pi-extmgr",
+    "npm:@plannotator/pi-extension"
   ],
   "enabledModels": [
     "vivanti/kimi-k3",
