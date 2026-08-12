@@ -32,6 +32,8 @@ onboarding = false
 # Default: unset; Herdr uses the configured theme's light sibling if available.
 # light_name = "catppuccin-latte"
 
+name = "catppuccin"
+auto_switch = false
 [theme.custom]
 # Override individual tokens from the base theme. Colors accept #rrggbb, named
 # colors, rgb(r,g,b), or reset aliases such as reset, default, none, and
@@ -77,7 +79,7 @@ blue = "#8aadf4"
 [terminal]
 # Executable used for new interactive panes. Empty uses $SHELL, then /bin/sh.
 # Default: "".
-default_shell = "zsh"
+# default_shell auto-detected from $SHELL
 
 # New-shell startup mode: "auto", "login", or "non_login". Auto uses login
 # shells on macOS and non-login behavior elsewhere.
@@ -308,7 +310,7 @@ split_vertical = "prefix+backslash"
 
 # Split the focused pane horizontally (stacked / split down).
 # Default: "prefix+minus".
-split_horizontal = "prefix+enter"
+split_horizontal = "prefix+return"
 
 # Close the focused pane.
 # Default: "prefix+x".
@@ -483,6 +485,8 @@ prompt_new_workspace_name = true
 # Default: "cyan".
 accent = "#c6a0f6"
 
+agent_panel_sort = "spaces"
+show_agent_labels_on_pane_borders = true
 [ui.sidebar.agents]
 # Blank rows between expanded Agent entries. At most 16 rows and 16 tokens per
 # row. Consecutive indented worktree children remain packed together.

@@ -3,3 +3,6 @@ machine.conf
 
 # Generated agent files from templates
 skills/parallel-todos/agents-generated/
+
+# Extension dependencies — installed by setup.sh
+node_modules/

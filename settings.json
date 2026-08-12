@@ -1,7 +1,7 @@
 {
   "lastChangelogVersion": "0.84.1",
   "theme": "dark",
-  "defaultProvider": "vivanti",
+  "defaultProvider": "opencode-go",
   "defaultModel": "deepseek-v4-pro",
   "defaultThinkingLevel": "high",
   "packages": [
@@ -11,9 +11,9 @@
     "npm:@plannotator/pi-extension"
   ],
   "enabledModels": [
-    "vivanti/kimi-k3",
-    "vivanti/deepseek-v4-flash",
-    "vivanti/deepseek-v4-pro",
-    "vivanti/glm-5.2"
+    "opencode-go/kimi-k3",
+    "opencode-go/deepseek-v4-flash",
+    "opencode-go/deepseek-v4-pro",
+    "opencode-go/glm-5.2"
   ]
 }
