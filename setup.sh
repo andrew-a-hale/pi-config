@@ -22,6 +22,10 @@ ln -sf "$DIR/settings.json" "$HOME/.pi/agent/settings.json"
 ln -sf "$DIR/system.md" "$HOME/.pi/agent/APPEND_SYSTEM.md"
 ln -sf "$DIR/cloak.json" "$HOME/.pi/agent/cloak.json"
 
+# Symlink herdr config
+mkdir -p "$HOME/.config/herdr"
+ln -sf "$DIR/herdr/config.toml" "$HOME/.config/herdr/config.toml"
+
 # Symlink extensions and skills
 rm -rf "$HOME/.pi/agent/extensions"
 ln -sfn "$DIR/extensions" "$HOME/.pi/agent/extensions"
