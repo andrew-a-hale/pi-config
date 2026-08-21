@@ -1,9 +1,9 @@
 {
   "lastChangelogVersion": "0.84.1",
   "theme": "dark",
-  "defaultProvider": "opencode-go",
-  "defaultModel": "deepseek-v4-pro",
-  "defaultThinkingLevel": "high",
+  "defaultProvider": "vivanti",
+  "defaultModel": "deepseek-v4-flash",
+  "defaultThinkingLevel": "low",
   "packages": [
     "npm:@dietrichgebert/ponytail",
     "npm:pi-mcp-adapter",
@@ -11,9 +11,10 @@
     "npm:@plannotator/pi-extension"
   ],
   "enabledModels": [
-    "opencode-go/kimi-k3",
-    "opencode-go/deepseek-v4-flash",
-    "opencode-go/deepseek-v4-pro",
-    "opencode-go/glm-5.2"
-  ]
+    "vivanti/kimi-k3",
+    "vivanti/deepseek-v4-flash",
+    "vivanti/deepseek-v4-pro",
+    "vivanti/glm-5.2"
+  ],
+  "hideThinkingBlock": false
 }

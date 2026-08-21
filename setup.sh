@@ -43,4 +43,24 @@ if [ -f "$DIR/mcp.json" ]; then
 fi
 
 echo ""
+# === Claude Code parity ===
+if command -v claude >/dev/null 2>&1; then
+  echo "==> Configuring Claude Code (skills + MCP)"
+  # Skills: pi and Claude share the SKILL.md format. Symlink each skill group.
+  mkdir -p "$HOME/.claude/skills"
+  for s in "$DIR"/skills/*/; do
+    name="$(basename "$s")"
+    [ "$name" = omarchy ] && continue  # empty placeholder
+    rm -rf "$HOME/.claude/skills/$name"
+    ln -sfn "$s" "$HOME/.claude/skills/$name"
+  done
+
+  # MCP servers: mirror mcp.json via the supported Claude CLI.
+  claude mcp add --scope user duckdb -- uvx mcp-server-motherduck --db-path :memory: --read-write >/dev/null 2>&1 || true
+  claude mcp add --scope user brave-search -- npx -y brave-search-mcp >/dev/null 2>&1 || true
+else
+  echo "==> claude not found; skipping Claude Code parity"
+fi
+
+echo ""
 echo "==> Done. Run pi with /reload to pick up changes."
