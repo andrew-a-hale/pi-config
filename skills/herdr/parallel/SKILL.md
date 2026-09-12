@@ -1,5 +1,6 @@
 ---
 name: herdr-parallel
+disable-model-invocation: true
 description: Run an independent set of tickets in parallel, each in its own herdr agent pane (pi, claude, or opencode) backed by a git worktree, dispatching asynchronously and surfacing any agent that needs user input. Use when the user wants to run multiple tickets concurrently and wants the ability to interact with each working agent.
 ---
 

@@ -16,6 +16,17 @@
       "args": ["-y", "brave-search-mcp"],
       "transport": "stdio",
       "lifecycle": "lazy"
+    },
+    "chrome-devtools-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp",
+        "-u",
+        "http://127.0.0.1:9222"
+      ],
+      "transport": "stdio",
+      "lifecycle": "lazy"
     }
   },
   "imports": []
