@@ -129,7 +129,7 @@ settings = "prefix+shift+s"
 
 # Create a workspace.
 # Default: "prefix+shift+n".
-# new_workspace = "prefix+shift+n"
+new_workspace = "prefix+shift+n"
 
 # Create a Git worktree from the selected workspace.
 # Default: "prefix+shift+g".
@@ -201,7 +201,7 @@ previous_workspace = "prefix+("
 
 # Select the next workspace.
 # Default: unset.
-next_workspace = "prefix+)"
+# next_workspace = "prefix+)"
 
 # Focus the previous agent shown in the Agent panel.
 # Default: unset.

@@ -2,7 +2,7 @@
   "lastChangelogVersion": "0.85.1",
   "theme": "dark",
   "defaultProvider": "opencode-go",
-  "defaultModel": "glm-5.3-flash",
+  "defaultModel": "deepseek-v4.1-flash",
   "defaultThinkingLevel": "high",
   "packages": [
     "npm:@dietrichgebert/ponytail",
@@ -11,10 +11,8 @@
     "npm:@plannotator/pi-extension"
   ],
   "enabledModels": [
-    "vivanti/kimi-k3",
-    "vivanti/deepseek-v4-flash",
-    "vivanti/deepseek-v4-pro",
-    "vivanti/glm-5.2"
-  ],
-  "hideThinkingBlock": false
+    "opencode-go/deepseek-v4.1-flash",
+    "opencode-go/deepseek-v4-flash-vision-exp",
+    "opencode-go/glm-5.3"
+  ]
 }
