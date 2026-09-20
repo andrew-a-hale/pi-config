@@ -12,9 +12,9 @@ agents that need a human, and let the user step in (or let it run headless). Thi
 is the orchestrator's reference for the herdr API — the one file that removes the need
 to know herdr by heart.
 
-Everything happens through the `herdr` CLI over its socket; herdr must be running.
-Pi's own agent state is reported to herdr automatically via the `herdr-agent-state`
-extension, so both pi and the skill agree on `agent_status`.
+Everything happens through the `herdr` CLI over its socket; herdr must be running
+(`herdr status` to check). Pi's own agent state is reported to herdr automatically via
+the `herdr-agent-state` extension, so both pi and the skill agree on `agent_status`.
 
 ## When NOT to use this
 
@@ -24,58 +24,98 @@ extension, so both pi and the skill agree on `agent_status`.
 - You need one coherent codebase at the end; each agent works in its **own worktree**,
   so the results are separate checkouts that must be merged back manually.
 
-## Herdr API the orchestrator needs
+## Herdr API (verified against herdr 0.8.0)
 
-All agents queried here are the ones herdr already sees. Target any agent by its
-`name` (e.g. `c1-grabber`) or `pane_id` (e.g. `w3N0:p1`).
+Every command returns a JSON envelope: `{"id": "...", "result": {...}, "type": "..."}`.
+Parse with `jq -r '.result.<field>'`.
+
+**Targeting: every agent command takes a `TARGET`, which is the `pane_id`** (e.g.
+`w3PW:p1`). There is no `name` field in `agent list` output — do not invent one. The
+name you pass to `agent start` is display-only (UI/title); target by `pane_id` always.
+
+### Per-ticket sequence — the whole loop in four commands
+
+```sh
+# 1. Create the workspace. The root pane is ALREADY at a shell prompt in the
+#    worktree — no pane split needed for the first agent.
+J=$(herdr worktree create --cwd /path/to/repo --branch ticket-1 --base main --label grabber)
+PANE=$(jq -r '.result.root_pane.pane_id' <<<"$J")     # e.g. w3PW:p1 — this is your TARGET
+WT=$(jq -r '.result.worktree.path' <<<"$J")           # e.g. ~/.herdr/worktrees/repo/ticket-1
+
+# 2. Start the agent in the root pane. Blocks until the agent is detected and
+#    ready for input (up to --timeout). Raises error if the pane isn't at a prompt.
+herdr agent start c1-grabber --kind pi --pane "$PANE" --timeout 60000
+
+# 3. Dispatch the ticket prompt — async, returns immediately.
+herdr agent prompt "$PANE" "Review src/auth/ for auth-bypass issues. Read-only: report findings, do not edit files."
+
+# 4. Supervise: wait for done OR blocked (flags are repeatable).
+herdr agent wait "$PANE" --until done --until blocked --timeout 600000
+herdr agent read "$PANE" --lines 40    # tail of the agent's terminal
+```
+
+State right after `worktree create` / `agent start` is often `unknown` — detection
+settles within seconds. If `agent start` fails to detect, debug with
+`herdr agent explain "$PANE" -v`.
 
 ### Discover agents
+
 ```sh
-herdr agent list                      # JSON; parse with jq
-jq -r '.result.agents[] | "\(.name)\t\(.agent_status)\t\(.cwd)"' \
+herdr agent list
+jq -r '.result.agents[] | "\(.pane_id)\t\(.agent_status)\t\(.cwd)"' \
   <(herdr agent list)
 ```
-Each entry: `name`, `agent` (kind), `pane_id`, `agent_status`, `cwd`, `workspace_id`.
 
-### Create the workspace for one ticket
-```sh
-herdr worktree create \
-  --path <abs/worktree/path> \
-  --branch <feature-branch> \
-  --base <branch-or-commit> \
-  --label <short-ticket-label>        # shows in the UI
-```
-Creates a git worktree and opens a tab. Keep one worktree per ticket.
+Fields per agent: `agent` (kind), `pane_id`, `agent_status`, `cwd`, `workspace_id`,
+`tab_id`, `focused`. Filter to your panes by `workspace_id` or by cwd matching your
+worktree paths.
 
-### Spawn an agent in that pane
-```sh
-herdr pane split --current --direction right --cwd <worktree-path>
-herdr agent start <name> --kind <KIND> --pane <pane-id> --timeout <MS>
-```
-`--kind` accepts `pi`, `claude`, `opencode`, and more. Pick the name convention
-`<c|p|o><n>-<label>` (e.g. `c1-grabber`) matching how herdr already names parallel
-agents. The pane must be sitting at its interactive shell prompt before `agent start`
-succeeds.
+### Need a second agent in the same tab? Only then split.
 
-### Dispatch a prompt (async — this is what makes it parallel)
 ```sh
-herdr agent prompt <target> <ticket-text>     # fire-and-forget; returns immediately
+PANE2=$(herdr pane split --pane "$PANE" --direction down --cwd "$WT" \
+        | jq -r '.result.pane.pane_id')
+herdr agent start c2-grabber --kind pi --pane "$PANE2" --timeout 60000
 ```
-Do not pass `--wait` here: you want to dispatch every ticket up front, then supervise.
 
-### Supervise / wait
+### Dispatch semantics (`agent prompt`)
+
+- Plain `herdr agent prompt <TARGET> <TEXT>` — fire-and-forget, returns immediately.
+  Dispatch all tickets up front, then supervise.
+- `--wait --until done --timeout <MS>` turns dispatch into a synchronous wait for the
+  settled state — fine for a single ticket or a simple headless review, but for N
+  tickets dispatch everything async first, then `agent wait` per target.
+- `--wait` requires an observed state change within 5000ms or it fails with
+  `agent_prompt_stalled`; it does not track turns — if the agent is already `working`,
+  the current turn's completion may match.
+- Without `--timeout` on `--wait`/`agent wait`, the wait is indefinite. Always pass a
+  `--timeout` in scripts.
+
+### Supervise
+
 ```sh
-herdr agent wait <target> --until idle --timeout <MS>
-herdr agent wait <target> --until blocked --timeout <MS>
+herdr agent wait <TARGET> --until blocked --timeout <MS>
+herdr agent list                          # cheap poll of all agents
+herdr agent get <TARGET>                  # one agent's full JSON
 ```
-Or just poll `herdr agent list` as your watch loop.
 
 ### Interact (the user's seam)
+
 ```sh
-herdr agent focus <target>      # bring it to the foreground for the user
-herdr agent read <target>       # read recent output
-herdr agent prompt <target> <text>   # answer a blocked agent's question
+herdr agent focus <TARGET>                 # bring the pane to the foreground
+herdr agent read <TARGET> --lines <N>      # read recent output (--source recent|visible)
+herdr agent prompt <TARGET> "<answer>"     # answer a blocked agent's question
+herdr agent send-keys <TARGET> esc         # e.g. interrupt a runaway agent
 ```
+
+### Clean up
+
+```sh
+herdr worktree remove --workspace <WORKSPACE_ID> --force
+```
+
+`WORKSPACE_ID` is on the `worktree create` result (`.result.workspace.workspace_id`)
+and in `herdr worktree list`. Suggest cleanup of finished panes when the user is done.
 
 ## Agent states — the done-vs-blocked decision
 
@@ -83,46 +123,64 @@ herdr agent prompt <target> <text>   # answer a blocked agent's question
 
 - `blocked` — the agent **paused and asked a question**. It is waiting on the user.
   **This is a stop signal for your supervisor.** Do not assume it finished; surface it.
-- `done` — terminal: the agent reports it finished its turn and is not continuing.
-- `idle` — the agent is sitting at its prompt. **Ambiguous**: it may be genuinely
-  finished OR waiting for the next instruction OR ready for the next turn.
+- `done` — terminal: the agent finished its turn and is not continuing.
+- `idle` — sitting at its prompt. **Ambiguous**: finished, waiting for instruction, or
+  mid-gap. `idle` alone is never proof of finished — read its tail output
+  (`herdr agent read`) before declaring it done.
 
-Rules for the orchestration loop:
+Rules:
 
-- A ticket is **awaiting user** when `blocked`. Surface every blocked agent to the
-  user with its name, worktree path, and the question you can glean from
-  `herdr agent read`.
-- A ticket is **finished** when it reaches `done`, or `idle` *and* the agent's last
-  action on it has no open question and you've stopped driving it. `idle` alone is
-  never proof of finished — only of "it isn't working right now."
-- To disambiguate a specific ticket, check `agent list` for its `agent_status` and
-  read its tail output before declaring it done.
+- A ticket is **awaiting user** when `blocked`. Surface every blocked agent with its
+  pane, worktree path, and the question gleaned from `herdr agent read`.
+- A ticket is **finished** when `done`, or `idle` with no open question and you've
+  stopped driving it.
+- Blocked agents are left **paused**, never guessed-at or force-continued. The user
+  decides. Guessing on a blocked agent is how parallel work silently goes sideways.
 
 ## Orchestration loop
 
 1. Read the ticket set. Each ticket = `label` + `prompt` + `branch` (suggest a branch
-   per ticket if the user hasn't given them).
+   per ticket if the user hasn't given one).
 2. Gate on independence — refuse overlapping work. State the dependency check you ran
    (same files / modules?) so the user can override.
-3. Bound concurrency: default `--workers N` = min(tickets, 4). Parallel agents are
-   heavy; don't spawn unbounded.
-4. For each ticket within the worker budget, in order:
-   `worktree create` → wait for interactive prompt → `pane split --cwd` →
-   `agent start --kind <kind>` → `agent prompt <target> <ticket-text>` (async).
-5. **Watch loop**: `agent wait <target> --until blocked --timeout <X>` per agent, or
-   poll `agent list`. Every `blocked` → tell the user which pane and what it's asking.
-   Every finished ticket → record its worktree path + branch + outcome, and free its
+3. Bound concurrency: default = min(tickets, 4). Parallel agents are heavy; don't
+   spawn unbounded.
+4. Run the per-ticket sequence above for each ticket within the worker budget
+   (`worktree create` → `agent start` → async `agent prompt`).
+5. Watch loop: `agent wait ... --until done --until blocked --timeout <X>` per agent,
+   or poll `agent list`. Every `blocked` → tell the user which pane and what it's
+   asking. Every finished ticket → record worktree path + branch + outcome, free the
    worker slot for the next queued ticket.
-6. When all tickets resolved, summarize: per ticket — worktree path, branch, status,
-   and the user-facing note on how it went. Point at any `blocked` agents the user
-   must answer before calling that ticket done.
+6. When all tickets resolve, summarize: per ticket — worktree path, branch, status,
+   and a user-facing note on how it went. Point at any `blocked` agents the user must
+   answer before calling that ticket done.
 
-## Notes
+## Worked example: parallel code review
 
-- `blocked` agents are left **paused**, never guessed-at or force-continued. The
-  user decides: answer it, or close/rename it. Guessing on a blocked agent is how
-  parallel work silently goes sideways.
-- Clear the history/roll-up yourself; the skill doesn't. Suggest cleaning up
-  `herdr worktree remove` / closing finished panes when the user is done so the
-  session doesn't fill with dead panes.
-- The whole skill is `herdr` CLI calls — no daemon, no config file, no wrapper binary.
+Three independent review scopes (different modules), dispatched together:
+
+```sh
+# Dispatch phase — all three up front, async
+for i in 1 2 3; do
+  case $i in
+    1) BR=rev-auth;   PROMPT="Review src/auth/ for auth-bypass and session bugs. Read-only; report findings and severity." ;;
+    2) BR=rev-api;    PROMPT="Review src/api/ for error-handling and input-validation gaps. Read-only." ;;
+    3) BR=rev-db;     PROMPT="Review migrations/ for missing indexes and unsafe DDL. Read-only." ;;
+  esac
+  J=$(herdr worktree create --cwd "$REPO" --branch "$BR" --base main --label "rev-$i")
+  PANE=$(jq -r '.result.root_pane.pane_id' <<<"$J")
+  herdr agent start "c$i-rev" --kind pi --pane "$PANE" --timeout 60000
+  herdr agent prompt "$PANE" "$PROMPT"
+  echo "rev-$i -> $PANE"
+done
+
+# Collect phase — wait each pane out, read results
+for t in $TARGETS; do
+  herdr agent wait "$t" --until done --until blocked --timeout 900000 || true
+  echo "== $t"; herdr agent read "$t" --lines 60
+done
+# Summarize findings per pane; surface any blocked agents with their question.
+```
+
+Review prompts should say **read-only** explicitly — otherwise a spawned agent may
+start "fixing" files in its worktree.

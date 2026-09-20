@@ -1,9 +1,9 @@
 {
-  "lastChangelogVersion": "0.84.1",
+  "lastChangelogVersion": "0.85.1",
   "theme": "dark",
-  "defaultProvider": "vivanti",
-  "defaultModel": "deepseek-v4-flash",
-  "defaultThinkingLevel": "low",
+  "defaultProvider": "opencode-go",
+  "defaultModel": "glm-5.3-flash",
+  "defaultThinkingLevel": "high",
   "packages": [
     "npm:@dietrichgebert/ponytail",
     "npm:pi-mcp-adapter",
