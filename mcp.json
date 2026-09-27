@@ -13,9 +13,15 @@
     },
     "brave-search": {
       "command": "npx",
-      "args": ["-y", "brave-search-mcp"],
+      "args": [
+        "-y",
+        "brave-search-mcp"
+      ],
       "transport": "stdio",
-      "lifecycle": "lazy"
+      "lifecycle": "lazy",
+      "env": {
+        "BRAVE_API_KEY": "BSAfQf9nJbpl5ZUn9oE8OZ2SoyGsu2o"
+      }
     },
     "chrome-devtools-mcp": {
       "command": "npx",
