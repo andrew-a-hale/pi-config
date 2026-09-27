@@ -1,16 +1,17 @@
 ---
 name: herdr-parallel
 disable-model-invocation: true
-description: Run an independent set of tickets in parallel, each in its own herdr agent pane (pi, claude, or opencode) backed by a git worktree, dispatching asynchronously and surfacing any agent that needs user input. Use when the user wants to run multiple tickets concurrently and wants the ability to interact with each working agent.
+description: Run an independent set of tickets in parallel, each with its own git worktree and its own herdr agent pane (harness chosen per ticket by jev), all panes split into one herdr workspace/tab, dispatching asynchronously and surfacing any agent that needs user input. Use when the user wants to run multiple tickets concurrently and wants the ability to interact with each working agent.
 ---
 
 # Run tickets in parallel with herdr
 
-Turn a set of **independent** tickets into N herdr agent panes, each on its own git
-worktree and its own agent process, dispatch the prompts asynchronously, watch for
-agents that need a human, and let the user step in (or let it run headless). This skill
-is the orchestrator's reference for the herdr API — the one file that removes the need
-to know herdr by heart.
+Turn a set of **independent** tickets into N herdr agent panes, each with its own git
+worktree checkout and its own agent process, all shown as split panes in **one herdr
+workspace/tab** (no extra tabs). Dispatch the prompts asynchronously, watch for agents
+that need a human, and let the user step in (or let it run headless). This skill is the
+orchestrator's reference for the herdr API — the one file that removes the need to know
+herdr by heart.
 
 Everything happens through the `herdr` CLI over its socket; herdr must be running
 (`herdr status` to check). Pi's own agent state is reported to herdr automatically via
@@ -24,7 +25,7 @@ the `herdr-agent-state` extension, so both pi and the skill agree on `agent_stat
 - You need one coherent codebase at the end; each agent works in its **own worktree**,
   so the results are separate checkouts that must be merged back manually.
 
-## Herdr API (verified against herdr 0.8.0)
+## Herdr API (verified against herdr 0.9.1)
 
 Every command returns a JSON envelope: `{"id": "...", "result": {...}, "type": "..."}`.
 Parse with `jq -r '.result.<field>'`.
@@ -33,18 +34,99 @@ Parse with `jq -r '.result.<field>'`.
 `w3PW:p1`). There is no `name` field in `agent list` output — do not invent one. The
 name you pass to `agent start` is display-only (UI/title); target by `pane_id` always.
 
-### Per-ticket sequence — the whole loop in four commands
+## Choose the harness with jev
+
+`--kind` is a **per-ticket** decision, not a fixed `pi`. Before dispatching, ask **Jev**
+— the `jev` tool (typed decisions, not chat) — which harness fits each ticket. Send one
+`choice` question per ticket in a single call: `criteria` maps each `--kind` value to a
+one-line fit, and `state` carries the tickets plus the same catalog in prose.
+
+Catalog — labels must equal `herdr agent start --kind` values exactly, and be trimmed to
+the kinds actually installed and authenticated (`herdr agent start --help` lists the
+installed kinds). This is the context Jev picks from, so keep each line about *fit* and
+edit freely for the project:
+
+| kind | fit |
+|------|-----|
+| `pi` | this environment's coding agent; strong repo/file tools; runs here directly |
+| `claude` | Anthropic Claude Code; careful multi-file refactors and review; long context |
+| `cortex` | Snowflake Cortex CLI (Claude-like); Snowflake/data-adjacent work |
+
+> `cortex` is **not** a launchable herdr agent kind in 0.9.1 — `herdr agent start --kind
+> cortex` fails with `unsupported interactive agent kind: cortex`, and a new kind needs a
+> herdr binary update. Herdr can still adopt cortex as a *claude* agent via the wrapper
+> hint, then drive it normally:
+>
+> ```sh
+> herdr pane run "$PANE" "HERDR_AGENT=claude cortex"   # instead of `agent start`
+> herdr agent wait "$PANE" --timeout 60000            # detection settles; then `agent prompt`
+> ```
+>
+> So when jev picks `cortex`, branch the launch: `pane run` as above instead of
+> `agent start`, then continue from step 3 unchanged (`agent prompt`/`agent wait` target
+> the pane, which herdr now reports as `claude`).
+
+One call, one question per ticket:
+
+```js
+jev({
+  state: "Harness fits:\n- pi: this environment's coding agent; strong repo/file tools\n" +
+         "- claude: Anthropic Claude Code; careful refactors and review; long context\n" +
+         "- cortex: Snowflake Cortex CLI (Claude-like); Snowflake/data-adjacent work\n" +
+         "\nTickets:\n- grabber: Review src/auth for auth-bypass. Read-only.\n" +
+         "- api: Fix failing input-validation tests.",
+  questions: {
+    grabber: { type: "choice", instructions: "Best harness for ticket 'grabber'",
+               criteria: { pi: "general repo work; strong file tools",
+                           claude: "careful review, long context",
+                           cortex: "Snowflake Cortex CLI, Claude-like" } },
+    api:     { type: "choice", instructions: "Best harness for ticket 'api'",
+               criteria: { pi: "general repo work; strong file tools",
+                           claude: "careful review, long context",
+                           cortex: "Snowflake Cortex CLI, Claude-like" } }
+  }
+})
+```
+
+Read each pick from `answers.<ticket>.choice` — the result is
+`{"answers":{"grabber":{"choice":"claude","probabilities":{...},"confidence":0.9}}}`.
+Pass it as `--kind`. If the `jev` call fails (no OpenRouter key) or returns no `choice`,
+default to `pi` and say so in the summary.
+
+### Per-ticket sequence — the whole loop, once per ticket
 
 ```sh
-# 1. Create the workspace. The root pane is ALREADY at a shell prompt in the
-#    worktree — no pane split needed for the first agent.
-J=$(herdr worktree create --cwd /path/to/repo --branch ticket-1 --base main --label grabber)
-PANE=$(jq -r '.result.root_pane.pane_id' <<<"$J")     # e.g. w3PW:p1 — this is your TARGET
+# 0. Pick the ONE shared workspace + tab BEFORE the loop. Each agent is added as a
+#    split pane here — no new tabs. Defaults to the orchestrator's own workspace/tab,
+#    anchored beside the orchestrator's pane; set DEDICATED=1 for a fresh workspace.
+if [ -n "${DEDICATED:-}" ] || [ -z "${HERDR_WORKSPACE_ID:-}" ]; then
+  WC=$(herdr workspace create --label parallel)
+  SHARED_WS=$(jq -r '.result.workspace.workspace_id' <<<"$WC")
+  TAB=$(jq -r '.result.tab.tab_id' <<<"$WC")
+  ANCHOR=$(jq -r '.result.root_pane.pane_id' <<<"$WC")
+else
+  SHARED_WS="$HERDR_WORKSPACE_ID"; TAB="$HERDR_TAB_ID"; ANCHOR="$HERDR_PANE_ID"
+fi
+
+# 1. Create the worktree. herdr first opens it as its own (child) workspace and
+#    returns that workspace's root pane, already at a shell prompt in the checkout.
+J=$(herdr worktree create --cwd "$REPO" --branch ticket-1 --base main --label grabber)
+PANE=$(jq -r '.result.root_pane.pane_id' <<<"$J")     # e.g. w3PW:p1
 WT=$(jq -r '.result.worktree.path' <<<"$J")           # e.g. ~/.herdr/worktrees/repo/ticket-1
 
-# 2. Start the agent in the root pane. Blocks until the agent is detected and
-#    ready for input (up to --timeout). Raises error if the pane isn't at a prompt.
-herdr agent start c1-grabber --kind pi --pane "$PANE" --timeout 60000
+# 1b. Move that shell into the shared tab as a split beside ANCHOR. The shell keeps
+#     its cwd (the worktree); the now-empty worktree workspace closes. Chain ANCHOR
+#     so each new agent splits off the previous one (`down` instead of `right` if the
+#     row would get too narrow).
+PANE=$(herdr pane move "$PANE" --tab "$TAB" --split right --target-pane "$ANCHOR" \
+  | jq -r '.result.move_result.pane.pane_id')
+ANCHOR="$PANE"
+
+# 2. Start the agent (KIND from the jev pick above) in the relocated pane. Blocks
+#    until the agent is detected and ready for input (up to --timeout). Raises error
+#    if the pane isn't at a prompt. For KIND=cortex use the wrapper instead:
+#      herdr pane run "$PANE" "HERDR_AGENT=claude cortex"
+herdr agent start c1-grabber --kind "$KIND" --pane "$PANE" --timeout 60000
 
 # 3. Dispatch the ticket prompt — async, returns immediately.
 herdr agent prompt "$PANE" "Review src/auth/ for auth-bypass issues. Read-only: report findings, do not edit files."
@@ -67,15 +149,17 @@ jq -r '.result.agents[] | "\(.pane_id)\t\(.agent_status)\t\(.cwd)"' \
 ```
 
 Fields per agent: `agent` (kind), `pane_id`, `agent_status`, `cwd`, `workspace_id`,
-`tab_id`, `focused`. Filter to your panes by `workspace_id` or by cwd matching your
-worktree paths.
+`tab_id`, `focused`. Every parallel pane lives in the same `SHARED_WS`/`TAB`, so filter
+to them by cwd matching the worktree paths or by the agent `name` from `agent start` —
+not by workspace_id. `herdr pane rename "$PANE" rev-auth` labels a pane in the UI if
+the agent name isn't enough.
 
-### Need a second agent in the same tab? Only then split.
+### Need a second agent for the same ticket? Only then split that one pane.
 
 ```sh
 PANE2=$(herdr pane split --pane "$PANE" --direction down --cwd "$WT" \
         | jq -r '.result.pane.pane_id')
-herdr agent start c2-grabber --kind pi --pane "$PANE2" --timeout 60000
+herdr agent start c2-grabber --kind "$KIND" --pane "$PANE2" --timeout 60000
 ```
 
 ### Dispatch semantics (`agent prompt`)
@@ -111,11 +195,13 @@ herdr agent send-keys <TARGET> esc         # e.g. interrupt a runaway agent
 ### Clean up
 
 ```sh
-herdr worktree remove --workspace <WORKSPACE_ID> --force
+git -C "$REPO" worktree remove --force "$WT"   # one per ticket
 ```
 
-`WORKSPACE_ID` is on the `worktree create` result (`.result.workspace.workspace_id`)
-and in `herdr worktree list`. Suggest cleanup of finished panes when the user is done.
+Step 1b moved the pane out, so the worktree's child workspace is already closed and
+`herdr worktree remove --workspace` has no target left — remove the checkout with git.
+Close the finished panes, and if you set `DEDICATED=1`, close that workspace too
+(`herdr workspace close "$SHARED_WS"`). Suggest cleanup when the user is done.
 
 ## Agent states — the done-vs-blocked decision
 
@@ -141,36 +227,56 @@ Rules:
 
 1. Read the ticket set. Each ticket = `label` + `prompt` + `branch` (suggest a branch
    per ticket if the user hasn't given one).
-2. Gate on independence — refuse overlapping work. State the dependency check you ran
+2. Ask **jev** for the harness per ticket (one call, one `choice` question per ticket,
+   catalog as `criteria`) and record each `answers.<ticket>.choice` as its `KIND`;
+   default to `pi` if jev is unavailable.
+3. Gate on independence — refuse overlapping work. State the dependency check you ran
    (same files / modules?) so the user can override.
-3. Bound concurrency: default = min(tickets, 4). Parallel agents are heavy; don't
+4. Bound concurrency: default = min(tickets, 4). Parallel agents are heavy; don't
    spawn unbounded.
-4. Run the per-ticket sequence above for each ticket within the worker budget
-   (`worktree create` → `agent start` → async `agent prompt`).
-5. Watch loop: `agent wait ... --until done --until blocked --timeout <X>` per agent,
+5. Run the per-ticket sequence above for each ticket within the worker budget
+   (`worktree create` → `pane move --split` beside `ANCHOR` → `agent start` → async
+   `agent prompt`).
+6. Watch loop: `agent wait ... --until done --until blocked --timeout <X>` per agent,
    or poll `agent list`. Every `blocked` → tell the user which pane and what it's
    asking. Every finished ticket → record worktree path + branch + outcome, free the
    worker slot for the next queued ticket.
-6. When all tickets resolve, summarize: per ticket — worktree path, branch, status,
-   and a user-facing note on how it went. Point at any `blocked` agents the user must
-   answer before calling that ticket done.
+7. When all tickets resolve, summarize: per ticket — worktree path, branch, harness
+   (`KIND`), status, and a user-facing note on how it went. Point at any `blocked`
+   agents the user must answer before calling that ticket done.
 
 ## Worked example: parallel code review
 
 Three independent review scopes (different modules), dispatched together:
 
 ```sh
-# Dispatch phase — all three up front, async
+# Harness: one jev call, one `choice` question per review scope (`rev-auth`, `rev-api`,
+# `rev-db`), catalog as criteria — read each answers.<ticket>.choice into KIND below.
+# (Shown here as pre-picked values; fall back to pi if the jev call fails.)
+
+# Dispatch phase — all three up front, async, all panes split into one tab
+if [ -n "${DEDICATED:-}" ] || [ -z "${HERDR_WORKSPACE_ID:-}" ]; then
+  WC=$(herdr workspace create --label parallel)
+  SHARED_WS=$(jq -r '.result.workspace.workspace_id' <<<"$WC")
+  TAB=$(jq -r '.result.tab.tab_id' <<<"$WC")
+  ANCHOR=$(jq -r '.result.root_pane.pane_id' <<<"$WC")
+else
+  SHARED_WS="$HERDR_WORKSPACE_ID"; TAB="$HERDR_TAB_ID"; ANCHOR="$HERDR_PANE_ID"
+fi
 for i in 1 2 3; do
   case $i in
-    1) BR=rev-auth;   PROMPT="Review src/auth/ for auth-bypass and session bugs. Read-only; report findings and severity." ;;
-    2) BR=rev-api;    PROMPT="Review src/api/ for error-handling and input-validation gaps. Read-only." ;;
-    3) BR=rev-db;     PROMPT="Review migrations/ for missing indexes and unsafe DDL. Read-only." ;;
+    1) BR=rev-auth; KIND=claude; PROMPT="Review src/auth/ for auth-bypass and session bugs. Read-only; report findings and severity." ;;
+    2) BR=rev-api;  KIND=pi;     PROMPT="Review src/api/ for error-handling and input-validation gaps. Read-only." ;;
+    3) BR=rev-db;   KIND=claude; PROMPT="Review migrations/ for missing indexes and unsafe DDL. Read-only." ;;
   esac
   J=$(herdr worktree create --cwd "$REPO" --branch "$BR" --base main --label "rev-$i")
   PANE=$(jq -r '.result.root_pane.pane_id' <<<"$J")
-  herdr agent start "c$i-rev" --kind pi --pane "$PANE" --timeout 60000
+  PANE=$(herdr pane move "$PANE" --tab "$TAB" --split right --target-pane "$ANCHOR" \
+    | jq -r '.result.move_result.pane.pane_id')
+  ANCHOR="$PANE"
+  herdr agent start "c$i-rev" --kind "$KIND" --pane "$PANE" --timeout 60000
   herdr agent prompt "$PANE" "$PROMPT"
+  TARGETS="$TARGETS $PANE"
   echo "rev-$i -> $PANE"
 done
 

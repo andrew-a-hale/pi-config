@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.85.1",
+  "lastChangelogVersion": "0.87.1",
   "theme": "dark",
   "defaultProvider": "opencode-go",
   "defaultModel": "deepseek-v4.1-flash",
@@ -15,4 +15,9 @@
     "opencode-go/deepseek-v4-flash-vision-exp",
     "opencode-go/glm-5.3"
   ]
+  ],
+  "hideThinkingBlock": false,
+  "modelThinkingLevels": {
+    "opencode-go/deepseek-v4.1-flash": "low"
+  }
 }
