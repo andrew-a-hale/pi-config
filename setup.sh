@@ -22,6 +22,11 @@ ln -sf "$DIR/settings.json" "$HOME/.pi/agent/settings.json"
 ln -sf "$DIR/system.md" "$HOME/.pi/agent/APPEND_SYSTEM.md"
 ln -sf "$DIR/cloak.json" "$HOME/.pi/agent/cloak.json"
 ln -sf "$DIR/mcp.json" "$HOME/.pi/agent/mcp.json"
+ln -sf "$DIR/machine.conf" "$HOME/.pi/agent/machine.conf"
+
+# Install the pi launcher, which injects secrets from pass at launch (see bin/pi)
+mkdir -p "$HOME/.local/bin"
+ln -sf "$DIR/bin/pi" "$HOME/.local/bin/pi"
 
 # Symlink herdr config
 mkdir -p "$HOME/.config/herdr"
@@ -34,7 +39,6 @@ for d in extensions skills bin; do
 done
 
 echo "==> Installing pi packages..."
-pi install npm:pi-mcp-adapter 2>/dev/null || echo "    pi-mcp-adapter already installed"
 pi install npm:pi-extmgr 2>/dev/null || echo "    pi-extmgr already installed"
 
 echo ""

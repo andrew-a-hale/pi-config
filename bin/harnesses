@@ -1,0 +1,11 @@
+#!/bin/sh
+# Print the per-machine harness catalog for the herdr parallel skill.
+# One `kind|fit` line per available harness, from HARNESSES in machine.conf.
+set -e
+
+cfg="${PI_MACHINE_CONF:-$HOME/.pi/agent/machine.conf}"
+[ -f "$cfg" ] || { echo "harnesses: no config at $cfg" >&2; exit 1; }
+# shellcheck disable=SC1090
+. "$cfg"
+[ -n "${HARNESSES:-}" ] || { echo "harnesses: HARNESSES unset in $cfg" >&2; exit 1; }
+printf '%s\n' "$HARNESSES"

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Launch pi with secrets injected into the environment.
+#
+# Secrets live in pass (encrypted at rest) and are exported for the life of
+# this process tree only. pi, its MCP servers, and pi-spawned shells inherit
+# them; nothing is written to a plaintext config file on disk.
+#
+# Seed once per machine (omit entries you don't use):
+#   pass insert dev/brave        # Brave Search API key (brave-search MCP)
+#   pass insert dev/openrouter   # OpenRouter key (jev tool)
+#
+# A missing pass entry is ignored, so pi still launches without that secret.
+set -u
+
+inject() { # inject <ENV_VAR> <pass-path>
+  local var="$1" path="$2" value
+  if value="$(pass show "$path" 2>/dev/null)" && [ -n "$value" ]; then
+    export "$var=$value"
+  fi
+}
+
+# pass needs a terminal to prompt for the GPG passphrase. Without a TTY, skip
+# rather than block the launch; pi still starts, minus the secrets.
+if [ -t 0 ]; then
+  inject BRAVE_API_KEY dev/brave
+  inject OPENROUTER_API_KEY dev/openrouter
+  inject OPENCODE_API_KEY dev/opencode
+fi
+
+export MISE_MINIMUM_RELEASE_AGE=0
+mise use -g "pi" || exit 1
+exec mise x "pi" -- "pi" "$@"

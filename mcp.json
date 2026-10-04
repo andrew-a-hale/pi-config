@@ -8,8 +8,7 @@
         ":memory:",
         "--read-write"
       ],
-      "transport": "stdio",
-      "lifecycle": "lazy"
+      "description": "DuckDB in-memory SQL analytics (mcp-server-motherduck)"
     },
     "brave-search": {
       "command": "npx",
@@ -17,11 +16,10 @@
         "-y",
         "brave-search-mcp"
       ],
-      "transport": "stdio",
-      "lifecycle": "lazy",
       "env": {
-        "BRAVE_API_KEY": "BSAfQf9nJbpl5ZUn9oE8OZ2SoyGsu2o"
-      }
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      },
+      "description": "Brave web search"
     },
     "chrome-devtools-mcp": {
       "command": "npx",
@@ -31,9 +29,7 @@
         "-u",
         "http://127.0.0.1:9222"
       ],
-      "transport": "stdio",
-      "lifecycle": "lazy"
+      "description": "Chrome DevTools browser automation on :9222"
     }
-  },
-  "imports": []
+  }
 }

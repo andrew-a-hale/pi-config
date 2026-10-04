@@ -37,16 +37,33 @@ cd pi-config
 ./setup.sh
 ```
 
-Setup installs pi packages (mcp-adapter, extmgr), mattpocock/skills, extension deps, and symlinks config into `~/.pi/agent/`.
+Setup installs pi packages (extmgr), mattpocock/skills, extension deps, and symlinks config into `~/.pi/agent/`.
+
+## Secrets
+
+Secrets are injected into pi's environment **at launch**, never stored in plaintext
+config. `bin/pi` (installed to `~/.local/bin/pi` by `setup.sh`) reads them from
+`pass` and execs pi, so pi, its MCP servers, and pi-spawned shells inherit them:
+
+```sh
+pass insert dev/brave        # BRAVE_API_KEY (brave-search MCP)
+pass insert dev/openrouter   # OPENROUTER_API_KEY (jev tool)
+```
+
+`mcp.json` references `${BRAVE_API_KEY}`; `extensions/jev.ts` reads
+`$OPENROUTER_API_KEY` first. A missing `pass` entry is ignored — pi still launches
+without that secret. `pass` may prompt for the GPG passphrase once per gpg-agent
+cache window; use `secret-tool` (gnome-keyring) instead if you want silent launch.
 
 ## MCP
 
-pi-mcp-adapter provides a single `mcp()` proxy tool. Config layers, highest wins:
+Uses pi's built-in MCP support. MCP tools are reached through `codemode`
+(`searchTools` / `describeTool` / `tools.mcp__<server>__<tool>`) or `tool_search`.
+Config layers, highest wins:
 
 | Path | Scope |
 |------|-------|
 | `~/.pi/agent/mcp.json` (symlink → `pi-config/mcp.json`) | global, all projects |
-| `<project>/.mcp.json` | project — read by pi and Claude Code |
 | `<project>/.pi/mcp.json` | project, pi-only overrides (`/mcp disable` writes here) |
 
 Project files are resolved from the **cwd only**, so launch pi at the repo root.
@@ -57,10 +74,7 @@ Global servers (this repo):
 - **brave-search** — web search
 - **chrome-devtools-mcp** — browser automation against a DevTools endpoint on `:9222`
 
-Project servers belong in that project's `.mcp.json`, not here. `vivanti-labs-platform`
-(`~/digital/vivanti-labs-platform/.mcp.json`) carries `clay`, `mox`, `academy`, and `gcp-run`.
-The `gcp-run` entry calls `bin/gcp-mcp-headers.sh`, which mints a fresh `gcloud` ADC bearer
-token per connection.
+Project servers belong in that project's `.mcp.json`, not here.
 
 ## Keybindings
 

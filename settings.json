@@ -1,12 +1,11 @@
 {
-  "lastChangelogVersion": "0.87.1",
+  "lastChangelogVersion": "1.0.2",
   "theme": "dark",
   "defaultProvider": "opencode-go",
   "defaultModel": "deepseek-v4.1-flash",
   "defaultThinkingLevel": "high",
   "packages": [
     "npm:@dietrichgebert/ponytail",
-    "npm:pi-mcp-adapter",
     "npm:pi-extmgr",
     "npm:@plannotator/pi-extension"
   ],
@@ -14,7 +13,6 @@
     "opencode-go/deepseek-v4.1-flash",
     "opencode-go/deepseek-v4-flash-vision-exp",
     "opencode-go/glm-5.3"
-  ]
   ],
   "hideThinkingBlock": false,
   "modelThinkingLevels": {

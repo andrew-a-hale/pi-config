@@ -41,10 +41,16 @@ name you pass to `agent start` is display-only (UI/title); target by `pane_id` a
 `choice` question per ticket in a single call: `criteria` maps each `--kind` value to a
 one-line fit, and `state` carries the tickets plus the same catalog in prose.
 
-Catalog — labels must equal `herdr agent start --kind` values exactly, and be trimmed to
-the kinds actually installed and authenticated (`herdr agent start --help` lists the
-installed kinds). This is the context Jev picks from, so keep each line about *fit* and
-edit freely for the project:
+Catalog — read the harnesses installed and authenticated **on this machine** from
+`machine.conf` (one `kind|fit` line each):
+
+```sh
+~/.pi/agent/bin/harnesses
+```
+
+Labels must equal `herdr agent start --kind` values exactly. This is the context Jev
+picks from, so keep each fit about *fit*. If the helper is missing or lists nothing,
+fall back to the built-in default below and say so:
 
 | kind | fit |
 |------|-----|
@@ -66,7 +72,8 @@ edit freely for the project:
 > `agent start`, then continue from step 3 unchanged (`agent prompt`/`agent wait` target
 > the pane, which herdr now reports as `claude`).
 
-One call, one question per ticket:
+Build `criteria` from the helper's `kind|fit` lines (the example below shows the
+default three). One call, one question per ticket:
 
 ```js
 jev({
@@ -228,8 +235,8 @@ Rules:
 1. Read the ticket set. Each ticket = `label` + `prompt` + `branch` (suggest a branch
    per ticket if the user hasn't given one).
 2. Ask **jev** for the harness per ticket (one call, one `choice` question per ticket,
-   catalog as `criteria`) and record each `answers.<ticket>.choice` as its `KIND`;
-   default to `pi` if jev is unavailable.
+   catalog from `~/.pi/agent/bin/harnesses` as `criteria`) and record each
+   `answers.<ticket>.choice` as its `KIND`; default to `pi` if jev is unavailable.
 3. Gate on independence — refuse overlapping work. State the dependency check you ran
    (same files / modules?) so the user can override.
 4. Bound concurrency: default = min(tickets, 4). Parallel agents are heavy; don't

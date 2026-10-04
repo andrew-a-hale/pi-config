@@ -34,11 +34,29 @@ cd pi-config
 ./setup.sh
 ```
 
+## Secrets
+
+Secrets aren't stored in plaintext config. `bin/pi` (installed to
+`~/.local/bin/pi`) injects them from `pass` into pi's environment at launch, so
+pi, its MCP servers, and pi-spawned shells inherit them:
+
+```sh
+pass insert dev/brave        # BRAVE_API_KEY (brave-search MCP)
+pass insert dev/openrouter   # OPENROUTER_API_KEY (jev tool)
+```
+
+`mcp.json` and the `jev` extension read those env vars; a missing `pass` entry is
+ignored.
+
 ## MCP
 
-pi-mcp-adapter provides a single `mcp()` proxy tool.
+Uses pi's built-in MCP support. MCP tools have `codemode` exposure: call them
+from a `codemode` script (`searchTools`, `describeTool`, `tools.mcp__<server>__<tool>`),
+or load them with `tool_search`.
 
 - **duckdb** — DuckDB in-memory (via `uvx mcp-server-motherduck`)
+- **brave-search** — Brave web search (needs `BRAVE_API_KEY`; see Secrets)
+- **chrome-devtools-mcp** — Browser automation on `127.0.0.1:9222`
 
 ## Keybindings
 
