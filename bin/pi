@@ -25,6 +25,13 @@ if [ -t 0 ]; then
   inject BRAVE_API_KEY dev/brave
   inject OPENROUTER_API_KEY dev/openrouter
   inject OPENCODE_API_KEY dev/opencode
+  inject AIGATEWAY_API_KEY dev/vivanti
+fi
+
+# Claude subscription provider: Mac only. Passed per launch, not via settings.json,
+# which is symlinked to every machine.
+if [ "$(uname -s)" = Darwin ]; then
+  set -- -e https://github.com/earendil-works/pi-claude-code "$@"
 fi
 
 export MISE_MINIMUM_RELEASE_AGE=0

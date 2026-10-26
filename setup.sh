@@ -22,6 +22,7 @@ ln -sf "$DIR/settings.json" "$HOME/.pi/agent/settings.json"
 ln -sf "$DIR/system.md" "$HOME/.pi/agent/APPEND_SYSTEM.md"
 ln -sf "$DIR/cloak.json" "$HOME/.pi/agent/cloak.json"
 ln -sf "$DIR/mcp.json" "$HOME/.pi/agent/mcp.json"
+ln -sf "$DIR/models.json" "$HOME/.pi/agent/models.json"
 ln -sf "$DIR/machine.conf" "$HOME/.pi/agent/machine.conf"
 
 # Install the pi launcher, which injects secrets from pass at launch (see bin/pi)

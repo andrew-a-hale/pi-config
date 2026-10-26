@@ -88,3 +88,12 @@ Project servers belong in that project's `.mcp.json`, not here.
 git pull
 ./setup.sh
 ```
+
+## Machines
+
+This config is used by 4 machines all with different credentials and setups.
+
+Mac: This is a work machine is should use the claude subscription and the ai gateway
+Jason: Home Desktop (Arch-Linux) that uses Opencode-Go and Openrouter
+Rose: Home Laptop (Arch-Linux) that uses Opencode-Go and Openrouter
+Tom: Home Lab (Debian) that uses Opencode-Go and Openrouter

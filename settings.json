@@ -1,21 +1,17 @@
 {
-  "lastChangelogVersion": "1.0.2",
+  "lastChangelogVersion": "1.2.0",
   "theme": "dark",
-  "defaultProvider": "opencode-go",
-  "defaultModel": "deepseek-v4.1-flash",
-  "defaultThinkingLevel": "high",
+  "defaultProvider": "vivanti",
+  "defaultModel": "glm-5.3-flash",
+  "defaultThinkingLevel": "low",
   "packages": [
     "npm:@dietrichgebert/ponytail",
     "npm:pi-extmgr",
     "npm:@plannotator/pi-extension"
   ],
   "enabledModels": [
-    "opencode-go/deepseek-v4.1-flash",
-    "opencode-go/deepseek-v4-flash-vision-exp",
-    "opencode-go/glm-5.3"
+    "vivanti/glm-5.3-flash",
+    "vivanti/deepseek-v4.1-flash"
   ],
-  "hideThinkingBlock": false,
-  "modelThinkingLevels": {
-    "opencode-go/deepseek-v4.1-flash": "low"
-  }
+  "hideThinkingBlock": false
 }
