@@ -34,5 +34,6 @@ if [ "$(uname -s)" = Darwin ]; then
   set -- -e https://github.com/earendil-works/pi-claude-code "$@"
 fi
 
-# pi is a global npm package (/usr/bin/pi); no mise in the chain any more.
-exec pi "$@"
+# pi is a global npm package; absolute path because this script is itself on PATH
+# as `pi` (symlinked from ~/.pi/agent/bin/pi) and would recurse.
+exec /usr/bin/pi "$@"
