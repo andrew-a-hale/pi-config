@@ -34,6 +34,5 @@ if [ "$(uname -s)" = Darwin ]; then
   set -- -e https://github.com/earendil-works/pi-claude-code "$@"
 fi
 
-export MISE_MINIMUM_RELEASE_AGE=0
-mise use -g "pi" || exit 1
-exec mise x "pi" -- "pi" "$@"
+# pi is a global npm package (/usr/bin/pi); no mise in the chain any more.
+exec pi "$@"
