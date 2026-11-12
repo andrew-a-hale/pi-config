@@ -26,6 +26,7 @@ pi-config/
 │   ├── productivity/
 │   ├── misc/
 │   └── herdr/
+├── nvim/                 # Neovim (LazyVim) config → symlinked to ~/.config/nvim
 └── .gitignore
 ```
 

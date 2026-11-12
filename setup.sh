@@ -33,6 +33,12 @@ ln -sf "$DIR/bin/pi" "$HOME/.local/bin/pi"
 mkdir -p "$HOME/.config/herdr"
 ln -sf "$DIR/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 
+# Symlink neovim config (back up an existing real directory first)
+if [ -e "$HOME/.config/nvim" ] && [ ! -L "$HOME/.config/nvim" ]; then
+  mv "$HOME/.config/nvim" "$HOME/.config/nvim.bak.$(date +%Y%m%d-%H%M%S)"
+fi
+ln -sfn "$DIR/nvim" "$HOME/.config/nvim"
+
 # Symlink extensions, skills, and helper scripts
 for d in extensions skills bin; do
   rm -rf "$HOME/.pi/agent/$d"
